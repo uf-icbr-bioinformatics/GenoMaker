@@ -1,0 +1,64 @@
+#!/bin/bash
+
+GENO_HOME=/blue/icbrbi/apps/GenoMaker/bin/
+PATH=${PATH}:${GENO_HOME}
+
+## These can be set via command line options
+
+# Directory where "unnamed" files are stored.
+WORK_DIR=_gmwork
+
+# Number of concurrent tasks (-j option for make)
+NTASKS=1
+
+# If "y", executes Makefile after writing it.
+RUN_MAKE=y
+
+function usage() {
+cat <<EOF
+Usage: GenoMaker [options] script
+
+GenoMaker converts a genomaker script into a Makefile, and
+optionally executes it. Options are:
+
+  -w W | Store temporary files in directory W (default: $WORK_DIR)
+  -j J | Run J jobs in parallel (make's -j option - default: $NTASKS)
+  -n   | Do not execute Makefile after writing it.
+
+EOF
+}
+
+while getopts "w:j:nh" opt; do
+    case $opt in
+	h)
+	    usage
+	    exit 0
+	    ;;
+	w)
+	    WORK_DIR="$OPTARG"
+	    ;;
+	j)
+	    NTASKS="$OPTARG"
+	    ;;
+	n)
+	    RUN_MAKE=n
+	    ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [[ -z $1 ]];
+then
+  usage
+  exit 1
+fi
+
+mkdir -p ${WORK_DIR}
+
+${GENO_HOME}/genomaker.py -w ${WORK_DIR} $1 > Makefile
+
+if [[ "$RUN_MAKE" == "y" ]];
+then
+  make -j ${NTASKS} Makefile
+fi
+
