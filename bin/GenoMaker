@@ -8,6 +8,9 @@ PATH=${PATH}:${GENO_HOME}
 # Directory where "unnamed" files are stored.
 WORK_DIR=_gmwork
 
+# Name of Makefile
+MAKEFILE_NAME=Makefile.gm
+
 # Number of concurrent tasks (-j option for make)
 NTASKS=1
 
@@ -16,23 +19,29 @@ RUN_MAKE=y
 
 function usage() {
 cat <<EOF
-Usage: GenoMaker [options] script
+Usage: GenoMaker [options] script [targets...]
 
 GenoMaker converts a genomaker script into a Makefile, and
-optionally executes it. Options are:
+optionally executes it to make the specified targets. 
 
+Options are:
+
+  -n N | Name of output Makefile (default: $MAKEFILE_NAME)
   -w W | Store temporary files in directory W (default: $WORK_DIR)
   -j J | Run J jobs in parallel (make's -j option - default: $NTASKS)
-  -n   | Do not execute Makefile after writing it.
+  -x   | Do not execute Makefile after writing it.
 
 EOF
 }
 
-while getopts "w:j:nh" opt; do
+while getopts "w:j:n:xh" opt; do
     case $opt in
 	h)
 	    usage
 	    exit 0
+	    ;;
+	n)
+	    MAKEFILE_NAME="$OPTARG"
 	    ;;
 	w)
 	    WORK_DIR="$OPTARG"
@@ -40,14 +49,17 @@ while getopts "w:j:nh" opt; do
 	j)
 	    NTASKS="$OPTARG"
 	    ;;
-	n)
+	x)
 	    RUN_MAKE=n
 	    ;;
     esac
 done
 shift $((OPTIND-1))
 
-if [[ -z $1 ]];
+script=$1
+shift
+
+if [[ -z $script ]];
 then
   usage
   exit 1
@@ -55,10 +67,10 @@ fi
 
 mkdir -p ${WORK_DIR}
 
-${GENO_HOME}/genomaker.py -w ${WORK_DIR} $1 > Makefile
+${GENO_HOME}/genomaker.py -w ${WORK_DIR} $script > ${MAKEFILE_NAME}
 
 if [[ "$RUN_MAKE" == "y" ]];
 then
-  make -j ${NTASKS} Makefile
+  make -j ${NTASKS} -f ${MAKEFILE_NAME} $@
 fi
 
